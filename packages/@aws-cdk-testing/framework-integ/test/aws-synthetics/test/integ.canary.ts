@@ -70,25 +70,13 @@ const folderAsset = new Canary(stack, 'FolderAsset', {
 
 const zipAsset = new Canary(stack, 'ZipAsset', {
   test: Test.custom({
-    handler: 'nodejs/node_modules/canary.handler',
+    handler: 'canary.handler',
     code: Code.fromAsset(path.join(__dirname, 'canary.zip')),
   }),
-  artifactsBucketLifecycleRules: [
-    {
-      expiration: cdk.Duration.days(30),
-    },
-  ],
-  runtime: Runtime.SYNTHETICS_NODEJS_PUPPETEER_7_0,
+  runtime: Runtime.SYNTHETICS_NODEJS_PUPPETEER_3_8,
   cleanup: Cleanup.LAMBDA,
-  startAfterCreation: false, // Prevent immediate start to avoid S3 timing issues
+  startAfterCreation: false,
 });
-
-// Add explicit dependency to ensure S3 asset is uploaded before canary creation
-// This prevents "Could not unzip uploaded file" errors during CloudFormation deployment
-const zipAssetNode = zipAsset.node.findChild('Code');
-if (zipAssetNode) {
-  zipAsset.node.addDependency(zipAssetNode);
-}
 
 const kebabToPascal = (text:string) => text.replace(/(^\w|[-./]\w)/g, (v) => v.replace(/[-./]/, '').toUpperCase());
 const createCanaryByRuntimes = (runtime: Runtime, handler?: string) =>
@@ -131,11 +119,12 @@ const test = new IntegTest(app, 'IntegCanaryTest', {
   testCases: [stack],
 });
 
-// Test execution success for all canaries except zipAsset (which has startAfterCreation: false)
-const executableCanaries = [
+// Assertion that all Canary's are Passed
+[
   inlineAsset,
   directoryAsset,
   folderAsset,
+  zipAsset,
   puppeteer52,
   puppeteer62,
   puppeteer70,
@@ -157,29 +146,9 @@ const executableCanaries = [
   selenium51,
   selenium60,
   selenium70,
-];
-
-// Test deployment success for zipAsset (startAfterCreation: false)
-const deploymentOnlyCanaries = [zipAsset];
-
-// Test runtime execution for executable canaries
-executableCanaries.forEach((canary, index) => test.assertions
+].forEach((canary) => test.assertions
   .awsApiCall('Synthetics', 'getCanaryRuns', {
     Name: canary.canaryName,
   })
   .assertAtPath('CanaryRuns.0.Status.State', ExpectedResult.stringLikeRegexp('PASSED'))
-  .waitForAssertions({
-    totalTimeout: cdk.Duration.minutes(5),
-    interval: cdk.Duration.seconds(15 + index), // Stagger: 15s, 16s, 17s...
-  }));
-
-// Test deployment success for zipAsset (can't test execution since startAfterCreation: false)
-deploymentOnlyCanaries.forEach((canary, index) => test.assertions
-  .awsApiCall('Synthetics', 'getCanary', {
-    Name: canary.canaryName,
-  })
-  .assertAtPath('Canary.Status.State', ExpectedResult.stringLikeRegexp('READY'))
-  .waitForAssertions({
-    totalTimeout: cdk.Duration.minutes(2),
-    interval: cdk.Duration.seconds(10 + index),
-  }));
+  .waitForAssertions({ totalTimeout: cdk.Duration.minutes(5) }));
