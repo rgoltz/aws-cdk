@@ -83,6 +83,13 @@ const zipAsset = new Canary(stack, 'ZipAsset', {
   startAfterCreation: false, // Prevent immediate start to avoid S3 timing issues
 });
 
+// Add explicit dependency to ensure S3 asset is uploaded before canary creation
+// This prevents "Could not unzip uploaded file" errors during CloudFormation deployment
+const zipAssetNode = zipAsset.node.findChild('Code');
+if (zipAssetNode) {
+  zipAsset.node.addDependency(zipAssetNode);
+}
+
 const kebabToPascal = (text:string) => text.replace(/(^\w|[-./]\w)/g, (v) => v.replace(/[-./]/, '').toUpperCase());
 const createCanaryByRuntimes = (runtime: Runtime, handler?: string) =>
   new Canary(stack, kebabToPascal(runtime.name + (handler ?? '')), {
