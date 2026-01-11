@@ -73,7 +73,7 @@ const zipAsset = new Canary(stack, 'ZipAsset', {
     handler: 'canary.handler',
     code: Code.fromAsset(path.join(__dirname, 'canary.zip')),
   }),
-  runtime: Runtime.SYNTHETICS_NODEJS_PUPPETEER_3_8,
+  runtime: Runtime.SYNTHETICS_NODEJS_PUPPETEER_7_0,
   cleanup: Cleanup.LAMBDA,
   startAfterCreation: false,
 });
