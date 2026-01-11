@@ -128,7 +128,6 @@ const canaries = [
   inlineAsset,
   directoryAsset,
   folderAsset,
-  zipAsset,
   puppeteer52,
   puppeteer62,
   puppeteer70,
@@ -152,6 +151,9 @@ const canaries = [
   selenium70,
 ];
 
+// Add zipAsset with longer delay to allow S3 upload to complete
+const zipCanaries = [zipAsset];
+
 canaries.forEach((canary, index) => test.assertions
   .awsApiCall('Synthetics', 'getCanaryRuns', {
     Name: canary.canaryName,
@@ -160,4 +162,15 @@ canaries.forEach((canary, index) => test.assertions
   .waitForAssertions({
     totalTimeout: cdk.Duration.minutes(5),
     interval: cdk.Duration.seconds(15 + index), // Minimal stagger: 15s, 16s, 17s...
+  }));
+
+// Test zipAsset with longer delay to handle timing issues
+zipCanaries.forEach((canary, index) => test.assertions
+  .awsApiCall('Synthetics', 'getCanaryRuns', {
+    Name: canary.canaryName,
+  })
+  .assertAtPath('CanaryRuns.0.Status.State', ExpectedResult.stringLikeRegexp('PASSED'))
+  .waitForAssertions({
+    totalTimeout: cdk.Duration.minutes(10), // Longer timeout
+    interval: cdk.Duration.seconds(30), // Wait 30s before first check
   }));
