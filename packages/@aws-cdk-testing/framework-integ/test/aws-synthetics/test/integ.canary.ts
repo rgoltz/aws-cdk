@@ -71,12 +71,15 @@ const folderAsset = new Canary(stack, 'FolderAsset', {
 const zipAsset = new Canary(stack, 'ZipAsset', {
   test: Test.custom({
     handler: 'canary.handler',
-    code: Code.fromAsset(path.join(__dirname, 'canary.zip')),
+    code: Code.fromAsset(path.join(__dirname, 'canary.zip'), {
+      deployTime: true,
+    }),
   }),
   runtime: Runtime.SYNTHETICS_NODEJS_PUPPETEER_7_0,
   cleanup: Cleanup.LAMBDA,
-  startAfterCreation: false,
 });
+
+zipAsset.node.addDependency(bucket);
 
 const kebabToPascal = (text:string) => text.replace(/(^\w|[-./]\w)/g, (v) => v.replace(/[-./]/, '').toUpperCase());
 const createCanaryByRuntimes = (runtime: Runtime, handler?: string) =>
