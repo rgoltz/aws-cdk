@@ -165,12 +165,12 @@ canaries.forEach((canary, index) => test.assertions
   }));
 
 // Test zipAsset with longer delay to handle timing issues
-zipCanaries.forEach((canary, index) => test.assertions
+zipCanaries.forEach((canary) => test.assertions
   .awsApiCall('Synthetics', 'getCanaryRuns', {
     Name: canary.canaryName,
   })
   .assertAtPath('CanaryRuns.0.Status.State', ExpectedResult.stringLikeRegexp('PASSED'))
   .waitForAssertions({
-    totalTimeout: cdk.Duration.minutes(10), // Longer timeout
-    interval: cdk.Duration.seconds(30), // Wait 30s before first check
+    totalTimeout: cdk.Duration.minutes(5), // Longer timeout
+    interval: cdk.Duration.seconds(15), // Wait 30s before first check
   }));
