@@ -70,7 +70,7 @@ const folderAsset = new Canary(stack, 'FolderAsset', {
 
 const zipAsset = new Canary(stack, 'ZipAsset', {
   test: Test.custom({
-    handler: 'canary.handler',
+    handler: 'nodejs/node_modules/canary.handler',
     code: Code.fromAsset(path.join(__dirname, 'canary.zip')),
   }),
   artifactsBucketLifecycleRules: [
@@ -123,8 +123,8 @@ const test = new IntegTest(app, 'IntegCanaryTest', {
   testCases: [stack],
 });
 
-// Assertion that all Canary's are Passed
-[
+// Assertion that all Canary's are Passed with staggered timeouts
+const canaries = [
   inlineAsset,
   directoryAsset,
   folderAsset,
@@ -150,9 +150,14 @@ const test = new IntegTest(app, 'IntegCanaryTest', {
   selenium51,
   selenium60,
   selenium70,
-].forEach((canary) => test.assertions
+];
+
+canaries.forEach((canary, index) => test.assertions
   .awsApiCall('Synthetics', 'getCanaryRuns', {
     Name: canary.canaryName,
   })
   .assertAtPath('CanaryRuns.0.Status.State', ExpectedResult.stringLikeRegexp('PASSED'))
-  .waitForAssertions({ totalTimeout: cdk.Duration.minutes(5) }));
+  .waitForAssertions({ 
+    totalTimeout: cdk.Duration.minutes(5),
+    interval: cdk.Duration.seconds(15 + index) // Minimal stagger: 15s, 16s, 17s...
+  }));
