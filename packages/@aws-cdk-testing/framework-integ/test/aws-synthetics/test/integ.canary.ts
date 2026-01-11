@@ -157,7 +157,7 @@ canaries.forEach((canary, index) => test.assertions
     Name: canary.canaryName,
   })
   .assertAtPath('CanaryRuns.0.Status.State', ExpectedResult.stringLikeRegexp('PASSED'))
-  .waitForAssertions({ 
+  .waitForAssertions({
     totalTimeout: cdk.Duration.minutes(5),
-    interval: cdk.Duration.seconds(15 + index) // Minimal stagger: 15s, 16s, 17s...
+    interval: cdk.Duration.seconds(15 + index), // Minimal stagger: 15s, 16s, 17s...
   }));
