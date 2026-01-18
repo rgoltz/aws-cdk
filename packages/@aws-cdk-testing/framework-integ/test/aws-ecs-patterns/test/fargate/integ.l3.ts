@@ -19,6 +19,10 @@ new ecsPatterns.ApplicationLoadBalancedFargateService(stack, 'ALBFargateService'
   taskImageOptions: {
     image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
   },
+  // Verify AZ rebalancing works with ENABLED value
+  availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.ENABLED,
+  // Explicitly set to satisfy ENABLED requirement (though 200 is already the default)
+  maxHealthyPercent: 200,
 });
 
 // Create NLB service
@@ -29,6 +33,8 @@ new ecsPatterns.NetworkLoadBalancedFargateService(stack, 'NLBFargateService', {
   taskImageOptions: {
     image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
   },
+  // Verify AZ rebalancing works with DISABLED value
+  availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.DISABLED,
 });
 
 new integ.IntegTest(app, 'l3FargateTest', {

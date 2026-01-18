@@ -17,6 +17,10 @@ new QueueProcessingFargateService(stack, 'QueueProcessingService', {
   memoryLimitMiB: 512,
   image: new ecs.AssetImage(path.join(__dirname, '..', 'sqs-reader')),
   minScalingCapacity: 0,
+  // Verify AZ rebalancing property is passed through to the service
+  availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.ENABLED,
+  // Explicitly set to satisfy ENABLED requirement (though 200 is already the default)
+  maxHealthyPercent: 200,
 });
 
 new integ.IntegTest(app, 'queueProcessingFargateServiceTest', {

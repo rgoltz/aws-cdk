@@ -1,4 +1,5 @@
 import { Vpc } from 'aws-cdk-lib/aws-ec2';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { App, Stack } from 'aws-cdk-lib';
 import * as integ from '@aws-cdk/integ-tests-alpha';
@@ -16,6 +17,8 @@ new NetworkMultipleTargetGroupsFargateService(stack, 'myService', {
   taskImageOptions: {
     image: ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
   },
+  // Verify AZ rebalancing property is passed through (DISABLED - other tests cover ENABLED)
+  availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.DISABLED,
   loadBalancers: [
     {
       name: 'lb1',
