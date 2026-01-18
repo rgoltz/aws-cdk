@@ -752,7 +752,6 @@ describe('Application Load Balancer', () => {
           image: ecs.ContainerImage.fromRegistry('test'),
         },
         availabilityZoneRebalancing: azRebalance,
-        maxHealthyPercent: azRebalance === ecs.AvailabilityZoneRebalancing.ENABLED ? 200 : undefined,
       });
 
       // THEN
