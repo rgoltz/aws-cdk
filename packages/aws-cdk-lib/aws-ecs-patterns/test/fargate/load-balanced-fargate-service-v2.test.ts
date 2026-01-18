@@ -734,6 +734,32 @@ describe('Application Load Balancer', () => {
         ],
       });
     });
+
+    test.each([
+      { name: 'not provided', azRebalance: undefined, expected: Match.absent() },
+      { name: 'enabled', azRebalance: ecs.AvailabilityZoneRebalancing.ENABLED, expected: 'ENABLED' },
+      { name: 'disabled', azRebalance: ecs.AvailabilityZoneRebalancing.DISABLED, expected: 'DISABLED' },
+    ])('configuring AZ rebalancing: $name', ({ azRebalance, expected }) => {
+      // GIVEN
+      const stack = new Stack();
+      const vpc = new Vpc(stack, 'VPC');
+      const cluster = new ecs.Cluster(stack, 'Cluster', { vpc });
+
+      // WHEN
+      new ApplicationMultipleTargetGroupsFargateService(stack, 'Service', {
+        cluster,
+        taskImageOptions: {
+          image: ecs.ContainerImage.fromRegistry('test'),
+        },
+        availabilityZoneRebalancing: azRebalance,
+        maxHealthyPercent: azRebalance === ecs.AvailabilityZoneRebalancing.ENABLED ? 200 : undefined,
+      });
+
+      // THEN
+      Template.fromStack(stack).hasResourceProperties('AWS::ECS::Service', {
+        AvailabilityZoneRebalancing: expected,
+      });
+    });
   });
 });
 
@@ -1212,6 +1238,32 @@ describe('Network Load Balancer', () => {
           taskDefinition,
         });
       }).toThrow('The first port mapping added to the default container must expose a single port');
+    });
+
+    test.each([
+      { name: 'not provided', azRebalance: undefined, expected: Match.absent() },
+      { name: 'enabled', azRebalance: ecs.AvailabilityZoneRebalancing.ENABLED, expected: 'ENABLED' },
+      { name: 'disabled', azRebalance: ecs.AvailabilityZoneRebalancing.DISABLED, expected: 'DISABLED' },
+    ])('configuring AZ rebalancing: $name', ({ azRebalance, expected }) => {
+      // GIVEN
+      const stack = new Stack();
+      const vpc = new Vpc(stack, 'VPC');
+      const cluster = new ecs.Cluster(stack, 'Cluster', { vpc });
+
+      // WHEN
+      new NetworkMultipleTargetGroupsFargateService(stack, 'Service', {
+        cluster,
+        taskImageOptions: {
+          image: ecs.ContainerImage.fromRegistry('test'),
+        },
+        availabilityZoneRebalancing: azRebalance,
+        maxHealthyPercent: azRebalance === ecs.AvailabilityZoneRebalancing.ENABLED ? 200 : undefined,
+      });
+
+      // THEN
+      Template.fromStack(stack).hasResourceProperties('AWS::ECS::Service', {
+        AvailabilityZoneRebalancing: expected,
+      });
     });
   });
 });
