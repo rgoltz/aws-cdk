@@ -1,4 +1,4 @@
-import { FargatePlatformVersion, FargateTaskDefinition, RuntimePlatform } from '../../../aws-ecs';
+import { AvailabilityZoneRebalancing, FargatePlatformVersion, FargateTaskDefinition, RuntimePlatform } from '../../../aws-ecs';
 
 export interface FargateServiceBaseProps {
   /**
@@ -89,4 +89,20 @@ export interface FargateServiceBaseProps {
    * @default - If the property is undefined, `operatingSystemFamily` is LINUX and `cpuArchitecture` is X86_64
    */
   readonly runtimePlatform?: RuntimePlatform;
+
+  /**
+   * Specifies whether to enable Amazon ECS Availability Zone rebalancing for the service.
+   *
+   * When enabled, Amazon ECS monitors task distribution across Availability Zones and actively
+   * rebalances to maintain even placement, improving high availability.
+   *
+   * Note: When enabled, the `maxHealthyPercent` must be greater than 100 to allow ECS to start
+   * replacement tasks before stopping existing ones during rebalancing. Additionally, the service
+   * cannot be associated with a Classic Load Balancer.
+   *
+   * @see https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-rebalancing.html
+   * @default - undefined. For new services, AWS defaults to ENABLED. For existing services being updated,
+   * AWS preserves the existing value or defaults to DISABLED if never set.
+   */
+  readonly availabilityZoneRebalancing?: AvailabilityZoneRebalancing;
 }
