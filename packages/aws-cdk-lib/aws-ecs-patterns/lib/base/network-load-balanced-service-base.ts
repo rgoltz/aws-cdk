@@ -450,16 +450,16 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
     // Configure security group rules based on the actual traffic source.
     const nlb = this.listener.loadBalancer;
     const port = ec2.Port.tcp(this.listenerPort);
-    
+
     // If NLB has security groups (via feature flag or manual config), allow from NLB SG only (most secure).
     if ('connections' in nlb && nlb.connections && nlb.connections.securityGroups.length > 0) {
       nlb.connections.allowTo(service.connections, port, 'Load balancer to target');
     } else {
       // Without NLB security groups, allow from internet (public) or VPC CIDR (internal).
-      const peer = this.internetFacing ? 
-        ec2.Peer.anyIpv4() : 
+      const peer = this.internetFacing ?
+        ec2.Peer.anyIpv4() :
         ec2.Peer.ipv4(this.cluster.vpc.vpcCidrBlock);
-      
+
       service.connections.allowFrom(
         peer,
         port,
