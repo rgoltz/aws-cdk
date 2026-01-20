@@ -353,6 +353,7 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
 
   private readonly _networkLoadBalancer?: NetworkLoadBalancer;
   private readonly internetFacing: boolean;
+  private readonly listenerPort: number;
   /**
    * Constructs a new instance of the NetworkLoadBalancedServiceBase class.
    */
@@ -382,8 +383,9 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
     const loadBalancer = props.loadBalancer ?? new NetworkLoadBalancer(this, 'LB', lbProps);
 
     const defaultPort = props.listenerCertificate ? 443 : 80;
+    this.listenerPort = props.listenerPort ?? defaultPort;
     const listenerProps = {
-      port: props.listenerPort ?? defaultPort,
+      port: this.listenerPort,
       certificates: props.listenerCertificate ? [props.listenerCertificate] : undefined,
     };
     this.listener = loadBalancer.addListener('PublicListener', listenerProps);
@@ -447,7 +449,7 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
     // NLB passes through client IPs directly to targets (unlike ALB which terminates connections).
     // Configure security group rules based on the actual traffic source.
     const nlb = this.listener.loadBalancer;
-    const port = ec2.Port.tcp(this.listener.listenerPort);
+    const port = ec2.Port.tcp(this.listenerPort);
     
     // If NLB has security groups (via feature flag or manual config), allow from NLB SG only (most secure).
     if ('connections' in nlb && nlb.connections && nlb.connections.securityGroups.length > 0) {
