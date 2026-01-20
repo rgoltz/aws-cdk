@@ -2450,6 +2450,126 @@ describe('NetworkLoadBalancedFargateService', () => {
     });
   });
 
+  test('NLB without security groups allows traffic from internet for public load balancer', () => {
+    // GIVEN
+    const stack = new cdk.Stack();
+    const vpc = new ec2.Vpc(stack, 'VPC');
+    const cluster = new ecs.Cluster(stack, 'Cluster', { vpc });
+
+    // WHEN
+    new ecsPatterns.NetworkLoadBalancedFargateService(stack, 'Service', {
+      cluster,
+      taskImageOptions: {
+        image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+      },
+      publicLoadBalancer: true,
+    });
+
+    // THEN - Service security group should allow from 0.0.0.0/0
+    Template.fromStack(stack).hasResourceProperties('AWS::EC2::SecurityGroup', {
+      SecurityGroupIngress: [
+        Match.objectLike({
+          CidrIp: '0.0.0.0/0',
+          FromPort: 80,
+          IpProtocol: 'tcp',
+          ToPort: 80,
+        }),
+      ],
+    });
+  });
+
+  test('NLB without security groups allows traffic from VPC for internal load balancer', () => {
+    // GIVEN
+    const stack = new cdk.Stack();
+    const vpc = new ec2.Vpc(stack, 'VPC');
+    const cluster = new ecs.Cluster(stack, 'Cluster', { vpc });
+
+    // WHEN
+    new ecsPatterns.NetworkLoadBalancedFargateService(stack, 'Service', {
+      cluster,
+      taskImageOptions: {
+        image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+      },
+      publicLoadBalancer: false,
+    });
+
+    // THEN - Service security group should allow from VPC CIDR
+    Template.fromStack(stack).hasResourceProperties('AWS::EC2::SecurityGroup', {
+      SecurityGroupIngress: [
+        Match.objectLike({
+          CidrIp: { 'Fn::GetAtt': ['VPCB9E5F0B4', 'CidrBlock'] },
+          FromPort: 80,
+          IpProtocol: 'tcp',
+          ToPort: 80,
+        }),
+      ],
+    });
+  });
+
+  test('NLB with security groups allows traffic from NLB security group only', () => {
+    // GIVEN
+    const app = new cdk.App({
+      context: {
+        '@aws-cdk/aws-elasticloadbalancingv2:networkLoadBalancerWithSecurityGroupByDefault': true,
+      },
+    });
+    const stack = new cdk.Stack(app, 'Stack');
+    const vpc = new ec2.Vpc(stack, 'VPC');
+    const cluster = new ecs.Cluster(stack, 'Cluster', { vpc });
+
+    // WHEN
+    new ecsPatterns.NetworkLoadBalancedFargateService(stack, 'Service', {
+      cluster,
+      taskImageOptions: {
+        image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+      },
+    });
+
+    // THEN - Service security group should allow from NLB security group
+    Template.fromStack(stack).hasResourceProperties('AWS::EC2::SecurityGroupIngress', {
+      IpProtocol: 'tcp',
+      FromPort: 80,
+      ToPort: 80,
+      SourceSecurityGroupId: Match.objectLike({
+        'Fn::GetAtt': Match.arrayWith([Match.stringLikeRegexp('.*LBSecurityGroup.*')]),
+      }),
+    });
+  });
+
+  test('NLB with custom service security groups still gets ingress rules added', () => {
+    // GIVEN
+    const stack = new cdk.Stack();
+    const vpc = new ec2.Vpc(stack, 'VPC');
+    const cluster = new ecs.Cluster(stack, 'Cluster', { vpc });
+    const customSg = new ec2.SecurityGroup(stack, 'CustomServiceSG', {
+      vpc,
+      description: 'Custom service security group',
+    });
+
+    // WHEN
+    new ecsPatterns.NetworkLoadBalancedFargateService(stack, 'Service', {
+      cluster,
+      taskImageOptions: {
+        image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+      },
+      securityGroups: [customSg],
+      publicLoadBalancer: true,
+    });
+
+    // THEN - Custom security group should have ingress rules added
+    Template.fromStack(stack).hasResourceProperties('AWS::EC2::SecurityGroup', {
+      GroupDescription: 'Custom service security group',
+      SecurityGroupIngress: [
+        Match.objectLike({
+          CidrIp: '0.0.0.0/0',
+          FromPort: 80,
+          IpProtocol: 'tcp',
+          ToPort: 80,
+        }),
+      ],
+    });
+  });
+
   describe('ECS_PATTERNS_UNIQUE_TARGET_GROUP_ID feature flag', () => {
     test('with feature flag enabled - generates unique target group IDs', () => {
       // GIVEN
