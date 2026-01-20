@@ -1293,3 +1293,37 @@ const networkLoadbalancedEc2Service = new ecsPatterns.NetworkLoadBalancedEc2Serv
   ipAddressType: elbv2.IpAddressType.DUAL_STACK,
 });
 ```
+
+
+### Availability Zone rebalancing
+
+Amazon ECS can monitor the distribution of tasks across Availability Zones and actively rebalance them to maintain even placement. This helps ensure high availability by evenly distributing tasks across multiple Availability Zones.
+
+When enabled, Amazon ECS monitors task distribution and rebalances as needed. Note that when enabled, `maxHealthyPercent` must be greater than 100 to allow ECS to start replacement tasks before stopping existing ones during rebalancing. Additionally, the service cannot be associated with a Classic Load Balancer.
+
+**Important:** AWS automatically enables Availability Zone rebalancing for new ECS services when the property is not explicitly set. Existing services that were created before this feature was introduced will retain their current setting (typically `DISABLED`) and won't automatically get this update. If you have older services and want to enable rebalancing, you'll need to explicitly update your infrastructure-as-code. Conversely, if you're creating a new service and don't want rebalancing, you must explicitly set it to `DISABLED`.
+
+```ts
+const loadBalancedFargateService = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'Service', {
+  cluster,
+  taskImageOptions: {
+    image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+  },
+  availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.ENABLED,
+  maxHealthyPercent: 200, // Required to be > 100 when rebalancing is enabled
+});
+```
+
+You can explicitly disable Availability Zone rebalancing:
+
+```ts
+const loadBalancedFargateService = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'Service', {
+  cluster,
+  taskImageOptions: {
+    image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+  },
+  availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.DISABLED,
+});
+```
+
+This property is available for all Fargate service patterns: `ApplicationLoadBalancedFargateService`, `NetworkLoadBalancedFargateService`, `QueueProcessingFargateService`, `ApplicationMultipleTargetGroupsFargateService`, and `NetworkMultipleTargetGroupsFargateService`.
