@@ -1,4 +1,5 @@
 import { Construct } from 'constructs';
+import * as ec2 from '../../../aws-ec2';
 import { IVpc } from '../../../aws-ec2';
 import {
   AwsLogDriver, BaseService, CloudMapOptions, Cluster, ContainerImage, DeploymentController, DeploymentCircuitBreaker,
@@ -351,6 +352,7 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
   public readonly cluster: ICluster;
 
   private readonly _networkLoadBalancer?: NetworkLoadBalancer;
+  private readonly internetFacing: boolean;
   /**
    * Constructs a new instance of the NetworkLoadBalancedServiceBase class.
    */
@@ -369,11 +371,11 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
     this.desiredCount = props.desiredCount || 1;
     this.internalDesiredCount = props.desiredCount;
 
-    const internetFacing = props.publicLoadBalancer ?? true;
+    this.internetFacing = props.publicLoadBalancer ?? true;
 
     const lbProps: NetworkLoadBalancerProps = {
       vpc: this.cluster.vpc,
-      internetFacing,
+      internetFacing: this.internetFacing,
       ipAddressType: props.ipAddressType,
     };
 
@@ -441,6 +443,26 @@ export abstract class NetworkLoadBalancedServiceBase extends Construct {
    */
   protected addServiceAsTarget(service: BaseService) {
     this.targetGroup.addTarget(service);
+
+    // NLB passes through client IPs directly to targets (unlike ALB which terminates connections).
+    // Configure security group rules based on the actual traffic source.
+    const nlb = this.listener.loadBalancer;
+    
+    // If NLB has security groups (via feature flag or manual config), allow from NLB SG only (most secure).
+    if ('connections' in nlb && nlb.connections && nlb.connections.securityGroups.length > 0) {
+      nlb.connections.allowTo(service.connections, this.targetGroup.loadBalancerAttached, 'Load balancer to target');
+    } else {
+      // Without NLB security groups, allow from internet (public) or VPC CIDR (internal).
+      const peer = this.internetFacing ? 
+        ec2.Peer.anyIpv4() : 
+        ec2.Peer.ipv4(this.cluster.vpc.vpcCidrBlock);
+      
+      service.connections.allowFrom(
+        peer,
+        this.targetGroup.loadBalancerAttached,
+        `Allow from ${this.internetFacing ? 'anywhere' : 'VPC'}`,
+      );
+    }
   }
 
   protected createAWSLogDriver(prefix: string): AwsLogDriver {
