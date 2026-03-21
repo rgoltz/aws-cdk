@@ -623,6 +623,7 @@
   "ALBFargateService90FDCE10": {
    "Type": "AWS::ECS::Service",
    "Properties": {
+    "AvailabilityZoneRebalancing": "ENABLED",
     "Cluster": {
      "Ref": "FargateCluster7CCD5F93"
     },
@@ -918,6 +919,7 @@
   "NLBFargateServiceB92AC095": {
    "Type": "AWS::ECS::Service",
    "Properties": {
+    "AvailabilityZoneRebalancing": "DISABLED",
     "Cluster": {
      "Ref": "FargateCluster7CCD5F93"
     },
