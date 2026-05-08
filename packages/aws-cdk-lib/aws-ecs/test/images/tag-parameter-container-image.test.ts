@@ -33,6 +33,54 @@ describe('tag parameter container image', () => {
       }).toThrow(/TagParameterContainerImage must be used in a container definition when using tagParameterValue/);
     });
 
+    test('creates a deploy-time condition to detect digest values', () => {
+      // GIVEN
+      const stack = new cdk.Stack();
+      const repository = new ecr.Repository(stack, 'Repository');
+      const tagParameterContainerImage = new ecs.TagParameterContainerImage(repository);
+      const taskDefinition = new ecs.FargateTaskDefinition(stack, 'TaskDef');
+
+      // WHEN
+      taskDefinition.addContainer('Container', { image: tagParameterContainerImage });
+
+      // THEN
+      const template = Template.fromStack(stack);
+      const conditions = template.findConditions('*', {
+        'Fn::Equals': [
+          { 'Fn::Select': [0, { 'Fn::Split': ['sha256:', Match.anyValue()] }] },
+          '',
+        ],
+      });
+      expect(Object.keys(conditions).length).toBe(1);
+    });
+
+    test('uses Fn::If to select separator based on digest condition', () => {
+      // GIVEN
+      const stack = new cdk.Stack();
+      const repository = new ecr.Repository(stack, 'Repository');
+      const tagParameterContainerImage = new ecs.TagParameterContainerImage(repository);
+      const taskDefinition = new ecs.FargateTaskDefinition(stack, 'TaskDef');
+
+      // WHEN
+      taskDefinition.addContainer('Container', { image: tagParameterContainerImage });
+
+      // THEN
+      const template = Template.fromStack(stack);
+      template.hasResourceProperties('AWS::ECS::TaskDefinition', {
+        ContainerDefinitions: Match.arrayWith([
+          Match.objectLike({
+            Image: {
+              'Fn::If': Match.arrayEquals([
+                Match.stringLikeRegexp('ImageDigestCondition'),
+                Match.anyValue(),
+                Match.anyValue(),
+              ]),
+            },
+          }),
+        ]),
+      });
+    });
+
     test('can be used in a cross-account manner', () => {
       // GIVEN
       const app = new cdk.App();
